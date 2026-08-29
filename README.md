@@ -32,22 +32,38 @@ making decisions.
 
 ![High-level architecture](docs/architecture-high-level.png)
 
-The vehicles are simulated; traffic-aware speeds on real routes around Jakarta and Bandung, engine data derived from motion physics, and driver behaviors that
-produce realistic events. 
+The vehicles are simulated, but the pipeline is real. Two virtual cars move around Jakarta and Bandung with traffic-aware speeds, engine signals derived from the motion physics, scripted driver behaviors producing harsh events. 
 
-They publish telemetry and driving events to Kafka, where a
-streaming pipeline built on Apache Beam processes the feed continuously: raw history lands
-in Cassandra, per-minute and rolling-window aggregates power the KPIs, and each vehicle's
-latest state is pushed to Redis for instant reads. Two dashboards consume the results —
-Grafana for trend analysis, and a custom live dashboard that pushes updates to browsers
-over WebSocket the moment something happens.
+Every data point takes the same journey:
+
+1. **Publish** 
+
+    Each tick (1 Hz), vehicles emit telemetry to the Kafka topic `iot.telemetry.raw`. Driving events (harsh braking, over-speed, …) go to a second topic `iot.events.raw` only when a threshold is crossed.
+
+2. **Process** 
+    
+    An Apache Beam pipeline runs on *event time* and fans the stream out to two types of storage, Cassandra and Redis.
+
+3. **Store** 
+    
+    Two stores, split by function. 
+     
+    **Cassandra** holds the write-optimized history: raw readings and windowed aggregates (`fleet_telemetry.vehicle_window_aggregates`), with tables modeled one per business question so every read is a single lookup. 
+    
+    **Redis** holds `vehicle:latest:*`, one blob per vehicle overwritten every tick, for sub-millisecond "where is it *right now*" reads.
+
+4. **Serve** 
+
+    Two layers for two different purposes.
+
+   **Grafana** for trend analysis. 
+   
+   **Custom dashboard** for the live view -> it reads Redis and pushes updates to browsers over WebSocket the moment something changes.
 
 ## Screenshots
 
-<!-- Drop in: docs/screenshot-grafana.jpg -->
 ![Grafana — Fleet Overview](docs/screenshot-grafana.jpg)
 
-<!-- Drop in: docs/screenshot-dashboard.jpg -->
 ![Live dashboard — map + rolling charts](docs/screenshot-dashboard.jpg)
 
 ## Run it
@@ -90,22 +106,6 @@ dropped loudly instead of silently corrupting the KPIs**.
 ```bash
 python3 tests/e2e_test.py
 ```
-
-## Design choices worth knowing
-
-- **Two speeds of truth.** 
-
-  - "Where is the fleet *now*" is served from Redis (sub-millisecond reads); 
-  - "What happened" is served from Cassandra (write-optimized history). Each dashboard reads from the store that matches its question.
-
-- **The schema follows the questions.** 
-  
-  Cassandra tables are modeled one per business question, so every dashboard query is a single fast lookup — no joins, no aggregation at query time.
-
-- **Honest streaming semantics.** 
-
-  Windows flush on schedule with an explicit late-data hold; anything too late is dropped *and logged*, never silently mixed into the KPIs.
-  The pipeline's clocks advance from the data's own event time, not the server's.
 
 ## What could happen next?
 
