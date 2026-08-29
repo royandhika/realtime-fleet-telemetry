@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local state (the simulator persists vehicle lifetime state in SQLite)
+*.db
+*.sqlite3
+
+# Env / editors
+.env.local
+.idea/
+.vscode/
+
+# OS
+.DS_Store
