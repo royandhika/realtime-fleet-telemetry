@@ -1,0 +1,178 @@
+name: iot-live-streaming
+
+# Local single-command stack (spec §8): Kafka (KRaft, no ZK), Cassandra,
+# Redis, Grafana, the WebSocket dashboard, the simulator producer, and the
+# Beam consumer/processor.
+services:
+  kafka:
+    # Official Apache Kafka image, KRaft mode (combined broker+controller, no ZK).
+    image: apache/kafka:3.7.1
+    container_name: iot-kafka
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: "2"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      CLUSTER_ID: "aDbPE20dTk66QFrJ-D8N1Q"  # stable base64 uuid (kafka-storage random-uuid)
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 25s
+
+  cassandra:
+    image: cassandra:5
+    container_name: iot-cassandra
+    environment:
+      CASSANDRA_CLUSTER_NAME: "iot-fleet"
+      CASSANDRA_NUM_TOKENS: "1"
+      CASSANDRA_SEEDS: "cassandra"
+      CASSANDRA_LISTEN_ADDRESS: "cassandra"
+      CASSANDRA_RPC_ADDRESS: "0.0.0.0"
+      CASSANDRA_START_RPC: "true"
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD", "cqlsh", "localhost", "9042", "-e", "describe keyspaces"]
+      interval: 10s
+      timeout: 10s
+      retries: 40
+      start_period: 40s
+
+  cassandra-init:
+    # One-shot: applies the CQL schema (the official cassandra image does NOT
+    # auto-run /docker-entrypoint-initdb.d, so we do it explicitly via cqlsh).
+    image: cassandra:5
+    container_name: iot-cassandra-init
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ./cassandra/init:/schema
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        for f in /schema/*.cql; do
+          echo "===> applying $$f"
+          until cqlsh cassandra 9042 -f "$$f"; do
+            echo "retry $$f in 3s"; sleep 3;
+          done
+        done
+        echo "===> fleet_telemetry schema applied"
+    restart: "no"
+
+  redis:
+    # Latest-state store (spec §4.6): vehicle:latest:{vehicle_id} JSON blobs,
+    # overwritten by the Beam pipeline on every telemetry tick.
+    image: redis:7-alpine
+    container_name: iot-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  grafana:
+    # Dashboard A (spec §7): Cassandra for historical panels, Redis for
+    # latest-state panels. Provisioned datasources + "Fleet Overview".
+    image: grafana/grafana:11.1.0
+    container_name: iot-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+      GF_INSTALL_PLUGINS: "hadesarchitect-cassandra-datasource,redis-datasource"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      cassandra-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ws-dashboard:
+    # Dashboard B (spec §7): WebSocket server + custom frontend. Reads Redis
+    # latest-state blobs and pushes live snapshots to browsers on :8080.
+    build: ./ws-server
+    container_name: iot-ws
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      WS_PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  simulator:
+    build: ./simulator
+    container_name: iot-simulator
+    environment:
+      SIM_ENABLED: "1"
+      OUTPUT_SINK: "kafka"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      KAFKA_TELEMETRY_TOPIC: "iot.telemetry.raw"
+      KAFKA_EVENTS_TOPIC: "iot.events.raw"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - simulator_data:/data
+    restart: unless-stopped
+
+  beam:
+    build: ./beam
+    container_name: iot-beam
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      KAFKA_TELEMETRY_TOPIC: "iot.telemetry.raw"
+      KAFKA_EVENTS_TOPIC: "iot.events.raw"
+      KAFKA_GROUP_ID: "beam-fleet-pipeline-v3"
+      CASSANDRA_CONTACT_POINTS: "cassandra:9042"
+      CASSANDRA_KEYSPACE: "fleet_telemetry"
+      REDIS_URL: "redis://redis:6379/0"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      cassandra-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  kafka_data:
+  cassandra_data:
+  simulator_data:
+  redis_data:
+  grafana_data:
