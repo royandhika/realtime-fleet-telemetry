@@ -13,6 +13,7 @@ import os
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
@@ -141,5 +142,5 @@ def draw(frame):
              color=MUTED, fontsize=9)
 
 anim = FuncAnimation(fig, draw, frames=FRAMES, interval=1000 / FPS)
-anim.save("/home/yor/iot-live-streaming-data/docs/demo.gif", writer=PillowWriter(fps=FPS))
+anim.save(Path(__file__).resolve().parent.parent / "docs" / "demo.gif", writer=PillowWriter(fps=FPS))
 print("saved docs/demo.gif")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end test for the iot-live-streaming-data stack (spec §9 milestones 0-5)."""
+"""End-to-end test for the realtime-fleet-telemetry stack (spec §9 milestones 0-5)."""
 import json
 import re
 import subprocess

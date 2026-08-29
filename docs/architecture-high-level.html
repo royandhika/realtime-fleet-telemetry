@@ -63,7 +63,7 @@
 </head>
 <body>
 <div class="wrap">
-  <p class="eyebrow">IoT Live Streaming Data · High-Level Architecture</p>
+  <p class="eyebrow">Realtime Fleet Telemetry · High-Level Architecture</p>
   <h1>Fleet Telemetry Streaming Pipeline</h1>
   <p class="subtitle">Two simulated vehicles stream ECU telemetry through Kafka into Apache Beam; Beam lands raw history and windowed aggregates in Cassandra, hot latest-state in Redis, and each dashboard reads what it needs.</p>
 
@@ -207,7 +207,7 @@
 </div>
 
 <footer>
-  <span>iot-live-streaming-data · kafka (kraft) → beam 2.55 directrunner → cassandra / redis</span>
+  <span>realtime-fleet-telemetry · kafka (kraft) → beam 2.55 directrunner → cassandra / redis</span>
   <span>docs/architecture-high-level.html</span>
 </footer>
 </body>
