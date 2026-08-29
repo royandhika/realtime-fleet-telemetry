@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Telemetry Pipeline — Record Shapes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #f5f5f5;
+      --ink: #2d3142;
+      --muted: #4f5d75;
+      --soft: #7a8399;
+      --rule: rgba(45,49,66,0.12);
+      --accent: #eb6c36;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Geist', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 3rem 2rem 2rem; }
+    .eyebrow {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-family: 'Instrument Serif', serif;
+      font-weight: 400;
+      font-size: 1.75rem;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 72ch;
+      margin-bottom: 2rem;
+    }
+    .diagram { width: 100%; overflow-x: auto; }
+    .diagram svg { display: block; width: 100%; height: auto; }
+    footer {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 1rem 2rem 3rem;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: var(--soft);
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">IoT Live Streaming Data · Data Shapes</p>
+  <h1>Record Shapes Through the Pipeline</h1>
+  <p class="subtitle">The 18-field ECU tick is never read whole at the edge — Beam's windows collapse it to five fields per minute, Redis holds six for sub-millisecond reads, and the browser receives a fan-in of blobs. Only raw history keeps every byte, landing in Cassandra unchanged.</p>
+
+  <div class="diagram">
+  <svg role="img" aria-labelledby="data-shapes-title data-shapes-desc" viewBox="0 0 1200 672" xmlns="http://www.w3.org/2000/svg">
+    <title id="data-shapes-title">Fleet telemetry pipeline — record shapes</title>
+    <desc id="data-shapes-desc">Record shapes through a fleet telemetry pipeline: an 18-field ECU telemetry tick and a 6-field driving event are produced to two Kafka topics; Beam passes both to Cassandra unchanged and reshapes them into five-field per-vehicle window aggregates, a five-field fleet rollup, and a six-field Redis latest-state blob; Grafana queries the stored tables and a WebSocket server pushes fleet snapshots to the browser.</desc>
+
+    <defs>
+      <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+      <marker id="arrow-dim" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="rgba(45,49,66,0.45)"/></marker>
+    </defs>
+
+    <!-- paper -->
+    <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+    <!-- ===== connectors (drawn before nodes) ===== -->
+    <path d="M 224,244 H 268" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 224,416 H 268" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 452,244 H 504" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 452,416 H 504" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 696,204 H 704 Q 712,204 712,196 V 136 Q 712,128 720,128 H 744" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 696,276 H 744" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 696,420 H 744" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 600,504 V 520 Q 600,528 608,528 H 744" fill="none" stroke="rgba(45,49,66,0.45)" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow-dim)"/>
+    <path d="M 936,96 H 984" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 936,240 H 948 Q 956,240 956,232 V 136 Q 956,128 964,128 H 984" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 936,388 H 964 Q 972,388 972,380 V 168 Q 972,160 980,160 H 984" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+    <path d="M 936,444 H 984" fill="none" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+
+    <!-- arrow labels (masked, 6px+ above line) -->
+    <rect x="226" y="226" width="40" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="246" y="236" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PRODUCE</text>
+    <rect x="456" y="226" width="44" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="478" y="236" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CONSUME</text>
+    <rect x="704" y="110" width="36" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="722" y="120" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">TUMBLE</text>
+    <rect x="700" y="258" width="40" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="720" y="268" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SLIDE</text>
+    <rect x="698" y="402" width="44" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="720" y="412" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PROJECT</text>
+    <rect x="636" y="510" width="80" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="676" y="520" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">UNCHANGED</text>
+    <rect x="940" y="78" width="40" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="960" y="88" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">QUERY</text>
+    <rect x="938" y="426" width="44" height="12" rx="2" fill="#f5f5f5"/>
+    <text x="960" y="436" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">POLL 1 HZ</text>
+
+    <!-- ===== phase chevron banner ===== -->
+    <polygon points="0,4 228,4 240,18 228,32 0,32" fill="#2d3142"/>
+    <polygon points="240,4 468,4 480,18 468,32 240,32 252,18" fill="#3d4460"/>
+    <polygon points="480,4 708,4 720,18 708,32 480,32 492,18" fill="#2d3142"/>
+    <polygon points="720,4 948,4 960,18 948,32 720,32 732,18" fill="#3d4460"/>
+    <polygon points="960,4 1200,4 1200,32 960,32 972,18" fill="#2d3142"/>
+    <text x="116" y="21" fill="#f5f5f5" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">SIMULATE</text>
+    <text x="360" y="21" fill="#f5f5f5" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">TRANSPORT</text>
+    <text x="600" y="21" fill="#f5f5f5" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">TRANSFORM</text>
+    <text x="840" y="21" fill="#f5f5f5" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">LAND</text>
+    <text x="1084" y="21" fill="#f5f5f5" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">SERVE</text>
+
+    <!-- ===== telemetry tick card (18 fields) ===== -->
+    <rect x="16" y="64" width="208" height="284" rx="6" fill="#f5f5f5"/>
+    <rect x="16" y="64" width="208" height="284" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="24" y="70" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="40" y="79" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TICK</text>
+    <text x="214" y="79" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">APPEND · 1 HZ</text>
+    <text x="28" y="95" fill="#2d3142" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Telemetry tick</text>
+    <text x="28" y="107" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">iot.telemetry.raw payload · §4.2</text>
+    <g font-family="'Geist Mono', monospace" font-size="7.5" fill="#2d3142">
+      <text x="60" y="122">vehicle_id</text>
+      <text x="60" y="134">trip_id</text>
+      <text x="60" y="146">ts</text>
+      <text x="60" y="158">lat</text>
+      <text x="60" y="170">lon</text>
+      <text x="60" y="182">heading_deg</text>
+      <text x="60" y="194">speed_kmh</text>
+      <text x="60" y="206">gear</text>
+      <text x="60" y="218">rpm</text>
+      <text x="60" y="230">throttle_pct</text>
+      <text x="60" y="242">maf_g_per_s</text>
+      <text x="60" y="254">engine_temp_c</text>
+      <text x="60" y="266">coolant_temp_c</text>
+      <text x="60" y="278">intake_air_temp_c</text>
+      <text x="60" y="290">fuel_pct</text>
+      <text x="60" y="302">fuel_consumed_l</text>
+      <text x="60" y="314">odometer_km</text>
+      <text x="60" y="326">ignition_on</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="5.5" fill="#7a8399" letter-spacing="0.08em">
+      <text x="28" y="122">ID</text>
+      <text x="28" y="134">ID</text>
+      <text x="28" y="146">ID</text>
+      <text x="28" y="158">GPS</text>
+      <text x="28" y="170">GPS</text>
+      <text x="28" y="182">GPS</text>
+      <text x="28" y="194">MOT</text>
+      <text x="28" y="206">ENG</text>
+      <text x="28" y="218">ENG</text>
+      <text x="28" y="230">ENG</text>
+      <text x="28" y="242">ENG</text>
+      <text x="28" y="254">TMP</text>
+      <text x="28" y="266">TMP</text>
+      <text x="28" y="278">TMP</text>
+      <text x="28" y="290">FUEL</text>
+      <text x="28" y="302">FUEL</text>
+      <text x="28" y="314">ODO</text>
+      <text x="28" y="326">SYS</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#7a8399" text-anchor="end">
+      <text x="212" y="122">uuid</text>
+      <text x="212" y="134">uuid</text>
+      <text x="212" y="146">timestamp</text>
+      <text x="212" y="158">double</text>
+      <text x="212" y="170">double</text>
+      <text x="212" y="182">double</text>
+      <text x="212" y="194">float</text>
+      <text x="212" y="206">int</text>
+      <text x="212" y="218">int</text>
+      <text x="212" y="230">float</text>
+      <text x="212" y="242">float</text>
+      <text x="212" y="254">float</text>
+      <text x="212" y="266">float</text>
+      <text x="212" y="278">float</text>
+      <text x="212" y="290">float</text>
+      <text x="212" y="302">float</text>
+      <text x="212" y="314">float</text>
+      <text x="212" y="326">boolean</text>
+    </g>
+
+    <!-- ===== kafka card ===== -->
+    <rect x="268" y="200" width="184" height="260" rx="6" fill="#f5f5f5"/>
+    <rect x="268" y="200" width="184" height="260" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="276" y="206" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="290" y="215" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LOG</text>
+    <text x="442" y="215" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">DURABLE LOG</text>
+    <text x="280" y="231" fill="#2d3142" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Kafka</text>
+    <text x="280" y="243" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">KRAFT · KEYED BY VEHICLE_ID</text>
+    <line x1="280" y1="252" x2="440" y2="252" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+    <text x="280" y="268" fill="#2d3142" font-size="8" font-weight="600" font-family="'Geist Mono', monospace">iot.telemetry.raw</text>
+    <text x="280" y="280" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">1 tick / s per vehicle · append</text>
+    <line x1="280" y1="336" x2="440" y2="336" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+    <text x="280" y="352" fill="#2d3142" font-size="8" font-weight="600" font-family="'Geist Mono', monospace">iot.events.raw</text>
+    <text x="280" y="364" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">sparse · threshold crossings</text>
+    <text x="360" y="436" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.04em">PASSTHROUGH — BYTES UNCHANGED IN FLIGHT</text>
+
+    <!-- ===== driving event card (6 fields) ===== -->
+    <rect x="16" y="376" width="208" height="132" rx="6" fill="#f5f5f5"/>
+    <rect x="16" y="376" width="208" height="132" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="24" y="382" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="38" y="391" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EVT</text>
+    <text x="214" y="391" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">APPEND · SPARSE</text>
+    <text x="28" y="407" fill="#2d3142" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Driving event</text>
+    <text x="28" y="419" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">iot.events.raw payload · sparse</text>
+    <g font-family="'Geist Mono', monospace" font-size="7.5" fill="#2d3142">
+      <text x="60" y="434">event_id</text>
+      <text x="60" y="446">vehicle_id</text>
+      <text x="60" y="458">trip_id</text>
+      <text x="60" y="470">ts</text>
+      <text x="60" y="482">event_type</text>
+      <text x="60" y="494">detail</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="5.5" fill="#7a8399" letter-spacing="0.08em">
+      <text x="28" y="434">EVT</text>
+      <text x="28" y="446">ID</text>
+      <text x="28" y="458">ID</text>
+      <text x="28" y="470">ID</text>
+      <text x="28" y="482">EVT</text>
+      <text x="28" y="494">EVT</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#7a8399" text-anchor="end">
+      <text x="212" y="434">uuid</text>
+      <text x="212" y="446">uuid</text>
+      <text x="212" y="458">uuid?</text>
+      <text x="212" y="470">timestamp</text>
+      <text x="212" y="482">enum · 9</text>
+      <text x="212" y="494">text</text>
+    </g>
+
+    <!-- ===== beam card (focal) ===== -->
+    <rect x="504" y="64" width="192" height="440" rx="6" fill="#f5f5f5"/>
+    <rect x="504" y="64" width="192" height="440" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+    <rect x="512" y="70" width="32" height="12" rx="2" fill="transparent" stroke="rgba(235,108,54,0.50)" stroke-width="0.8"/>
+    <text x="528" y="79" fill="rgba(235,108,54,0.90)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PROC</text>
+    <text x="686" y="79" fill="rgba(235,108,54,0.90)" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">RESHAPES HERE</text>
+    <text x="516" y="95" fill="#eb6c36" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Beam</text>
+    <text x="516" y="107" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">DIRECTRUNNER · SDF · PYTHON</text>
+    <g font-family="'Geist Mono', monospace">
+      <text x="516" y="122" fill="#2d3142" font-size="7.5" font-weight="600" letter-spacing="0.06em">RAW SINK</text>
+      <text x="516" y="136" fill="#4f5d75" font-size="6.5">both topics → cassandra</text>
+      <text x="516" y="147" fill="#4f5d75" font-size="6.5">re-keyed (vehicle_id, event_time)</text>
+      <line x1="516" y1="168" x2="684" y2="168" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="516" y="198" fill="#2d3142" font-size="7.5" font-weight="600" letter-spacing="0.06em">TUMBLE 1 MIN</text>
+      <text x="516" y="212" fill="#4f5d75" font-size="6.5">avg + max speed · harsh count</text>
+      <text x="516" y="223" fill="#4f5d75" font-size="6.5">one row per vehicle per minute</text>
+      <line x1="516" y1="244" x2="684" y2="244" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="516" y="274" fill="#2d3142" font-size="7.5" font-weight="600" letter-spacing="0.06em">SLIDE 5 MIN</text>
+      <text x="516" y="288" fill="#4f5d75" font-size="6.5">fleet-wide rolling average</text>
+      <text x="516" y="299" fill="#4f5d75" font-size="6.5">period 5 min · fires every 30 s</text>
+      <line x1="516" y1="320" x2="684" y2="320" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="516" y="350" fill="#2d3142" font-size="7.5" font-weight="600" letter-spacing="0.06em">SESSION</text>
+      <text x="516" y="364" fill="#4f5d75" font-size="6.5">trip boundary detection</text>
+      <text x="516" y="375" fill="#4f5d75" font-size="6.5">closes on ≥5-min gap or ignition_off</text>
+      <line x1="516" y1="396" x2="684" y2="396" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="516" y="426" fill="#2d3142" font-size="7.5" font-weight="600" letter-spacing="0.06em">PROJECT 6</text>
+      <text x="516" y="440" fill="#4f5d75" font-size="6.5">latest blob → redis</text>
+      <text x="516" y="451" fill="#4f5d75" font-size="6.5">hot set · overwritten every tick</text>
+      <text x="516" y="478" fill="#7a8399" font-size="6.5" letter-spacing="0.04em">IN 18 + 6 FIELDS → OUT 5 · 5 · 6</text>
+    </g>
+
+    <!-- ===== vehicle_window_aggregates card ===== -->
+    <rect x="744" y="64" width="192" height="128" rx="6" fill="#f5f5f5"/>
+    <rect x="744" y="64" width="192" height="128" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="752" y="70" width="36" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="770" y="79" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CASS</text>
+    <text x="926" y="79" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">UPSERT · 1/MIN</text>
+    <text x="756" y="95" fill="#2d3142" font-size="9.5" font-weight="600" font-family="'Geist Mono', monospace">vehicle_window_aggregates</text>
+    <text x="756" y="107" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">beam output · per-vehicle window</text>
+    <g font-family="'Geist Mono', monospace" font-size="7.5" fill="#2d3142">
+      <text x="788" y="122">vehicle_id</text>
+      <text x="788" y="134">window_start</text>
+      <text x="788" y="146">avg_speed_kmh</text>
+      <text x="788" y="158">max_speed_kmh</text>
+      <text x="788" y="170">harsh_event_count</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="5.5" fill="#7a8399" letter-spacing="0.08em">
+      <text x="756" y="122">KEY</text>
+      <text x="756" y="134">CLK</text>
+      <text x="756" y="146">VAL</text>
+      <text x="756" y="158">VAL</text>
+      <text x="756" y="170">VAL</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#7a8399" text-anchor="end">
+      <text x="924" y="122">uuid</text>
+      <text x="924" y="134">ts desc</text>
+      <text x="924" y="146">float</text>
+      <text x="924" y="158">float</text>
+      <text x="924" y="170">int</text>
+    </g>
+
+    <!-- ===== fleet_window_aggregates card ===== -->
+    <rect x="744" y="208" width="192" height="128" rx="6" fill="#f5f5f5"/>
+    <rect x="744" y="208" width="192" height="128" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="752" y="214" width="36" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="770" y="223" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CASS</text>
+    <text x="926" y="223" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">UPSERT · 1/30 S</text>
+    <text x="756" y="239" fill="#2d3142" font-size="9.5" font-weight="600" font-family="'Geist Mono', monospace">fleet_window_aggregates</text>
+    <text x="756" y="251" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">beam output · fleet-wide rollup</text>
+    <g font-family="'Geist Mono', monospace" font-size="7.5" fill="#2d3142">
+      <text x="788" y="266">day_bucket</text>
+      <text x="788" y="278">window_start</text>
+      <text x="788" y="290">vehicles_active</text>
+      <text x="788" y="302">fleet_avg_speed_kmh</text>
+      <text x="788" y="314">total_harsh_events</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="5.5" fill="#7a8399" letter-spacing="0.08em">
+      <text x="756" y="266">KEY</text>
+      <text x="756" y="278">CLK</text>
+      <text x="756" y="290">VAL</text>
+      <text x="756" y="302">VAL</text>
+      <text x="756" y="314">VAL</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#7a8399" text-anchor="end">
+      <text x="924" y="266">date</text>
+      <text x="924" y="278">ts desc</text>
+      <text x="924" y="290">int</text>
+      <text x="924" y="302">float</text>
+      <text x="924" y="314">int</text>
+    </g>
+
+    <!-- ===== redis blob card ===== -->
+    <rect x="744" y="352" width="192" height="136" rx="6" fill="#f5f5f5"/>
+    <rect x="744" y="352" width="192" height="136" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="752" y="358" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="766" y="367" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">HOT</text>
+    <text x="926" y="367" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">OVERWRITE · HOT</text>
+    <text x="756" y="383" fill="#2d3142" font-size="9.5" font-weight="600" font-family="'Geist Mono', monospace">vehicle:latest:*</text>
+    <text x="756" y="395" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">redis json blob · hot set</text>
+    <g font-family="'Geist Mono', monospace" font-size="7.5" fill="#2d3142">
+      <text x="788" y="410">vehicle_id</text>
+      <text x="788" y="422">lat</text>
+      <text x="788" y="434">lon</text>
+      <text x="788" y="446">speed_kmh</text>
+      <text x="788" y="458">engine_temp_c</text>
+      <text x="788" y="470">updated_at</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="5.5" fill="#7a8399" letter-spacing="0.08em">
+      <text x="756" y="410">KEY</text>
+      <text x="756" y="422">GPS</text>
+      <text x="756" y="434">GPS</text>
+      <text x="756" y="446">MOT</text>
+      <text x="756" y="458">ENG</text>
+      <text x="756" y="470">SYS</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#7a8399" text-anchor="end">
+      <text x="924" y="410">text</text>
+      <text x="924" y="422">double</text>
+      <text x="924" y="434">double</text>
+      <text x="924" y="446">float</text>
+      <text x="924" y="458">float</text>
+      <text x="924" y="470">timestamp</text>
+    </g>
+
+    <!-- ===== cassandra raw tables strip (passthrough, dashed) ===== -->
+    <rect x="744" y="504" width="192" height="56" rx="6" fill="#f5f5f5"/>
+    <rect x="744" y="504" width="192" height="56" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.35)" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="756" y="522" fill="#2d3142" font-size="10" font-weight="600" font-family="'Geist', sans-serif">Cassandra raw tables</text>
+    <text x="926" y="517" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">PASSTHROUGH</text>
+    <text x="756" y="536" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">telemetry_by_vehicle_time · 18 fields</text>
+    <text x="756" y="548" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">events_by_vehicle_time · 6 fields</text>
+
+    <!-- ===== grafana card ===== -->
+    <rect x="984" y="64" width="192" height="120" rx="6" fill="#f5f5f5"/>
+    <rect x="984" y="64" width="192" height="120" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="992" y="70" width="34" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="1009" y="79" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DASH</text>
+    <text x="1166" y="79" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">QUERY · POLL</text>
+    <text x="996" y="95" fill="#2d3142" font-size="11" font-weight="600" font-family="'Geist', sans-serif">Grafana</text>
+    <text x="996" y="107" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">trends · :3000</text>
+    <g font-family="'Geist Mono', monospace" font-size="7.5" fill="#2d3142">
+      <text x="1028" y="122">*_window_aggregates</text>
+      <text x="1028" y="134">raw tables (history)</text>
+      <text x="1028" y="146">vehicle:latest:*</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="5.5" fill="#7a8399" letter-spacing="0.08em">
+      <text x="996" y="122">CQL</text>
+      <text x="996" y="134">CQL</text>
+      <text x="996" y="146">HOT</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#7a8399" text-anchor="end">
+      <text x="1164" y="122">poll</text>
+      <text x="1164" y="134">poll</text>
+      <text x="1164" y="146">poll</text>
+    </g>
+
+    <!-- ===== ws snapshot card ===== -->
+    <rect x="984" y="368" width="192" height="120" rx="6" fill="#f5f5f5"/>
+    <rect x="984" y="368" width="192" height="120" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.25)" stroke-width="1"/>
+    <rect x="992" y="374" width="26" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+    <text x="1005" y="383" fill="rgba(45,49,66,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WS</text>
+    <text x="1166" y="383" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.06em">PUSH · 1 HZ</text>
+    <text x="996" y="399" fill="#2d3142" font-size="11" font-weight="600" font-family="'Geist', sans-serif">WS snapshot</text>
+    <text x="996" y="411" fill="#4f5d75" font-size="6.5" font-family="'Geist Mono', monospace">aiohttp → browser · :8080</text>
+    <g font-family="'Geist Mono', monospace" font-size="7.5" fill="#2d3142">
+      <text x="1028" y="426">type</text>
+      <text x="1028" y="438">ts</text>
+      <text x="1028" y="450">vehicles[]</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="5.5" fill="#7a8399" letter-spacing="0.08em">
+      <text x="996" y="426">SYS</text>
+      <text x="996" y="438">ID</text>
+      <text x="996" y="450">FAN</text>
+    </g>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#7a8399" text-anchor="end">
+      <text x="1164" y="426">"snapshot"</text>
+      <text x="1164" y="438">utc iso</text>
+      <text x="1164" y="450">array × 2</text>
+    </g>
+    <text x="996" y="468" fill="#7a8399" font-size="6.5" font-family="'Geist Mono', monospace">vehicles[i] = the redis blob, verbatim</text>
+
+    <!-- ===== editorial callouts ===== -->
+    <text x="620" y="584" fill="#4f5d75" font-size="14" font-family="'Instrument Serif', serif" font-style="italic" text-anchor="middle">Sixty ticks become one row — windowing is a projection, not a copy.</text>
+    <text x="1024" y="584" fill="#4f5d75" font-size="14" font-family="'Instrument Serif', serif" font-style="italic" text-anchor="middle">Six fields, overwritten every tick — the hot set.</text>
+
+    <!-- ===== legend ===== -->
+    <line x1="32" y1="632" x2="1168" y2="632" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+    <text x="32" y="654" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+    <rect x="116" y="642" width="12" height="12" rx="2" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="0.8"/>
+    <text x="136" y="652" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">Beam · reshapes the record</text>
+    <line x1="292" y1="648" x2="316" y2="648" stroke="rgba(45,49,66,0.45)" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="324" y="652" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">passthrough · unchanged</text>
+    <line x1="464" y1="648" x2="488" y2="648" stroke="#4f5d75" stroke-width="1"/>
+    <text x="496" y="652" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">data flow</text>
+    <g font-family="'Geist Mono', monospace" font-size="6.5" fill="#4f5d75" text-anchor="middle" letter-spacing="0.04em">
+      <rect x="580" y="642" width="84" height="14" rx="2" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <text x="622" y="652">APPEND · 1 HZ</text>
+      <rect x="676" y="642" width="96" height="14" rx="2" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <text x="724" y="652">APPEND · SPARSE</text>
+      <rect x="784" y="642" width="96" height="14" rx="2" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <text x="832" y="652">UPSERT · WINDOW</text>
+      <rect x="892" y="642" width="100" height="14" rx="2" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <text x="942" y="652">OVERWRITE · HOT</text>
+      <rect x="1004" y="642" width="72" height="14" rx="2" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <text x="1040" y="652">PUSH · 1 HZ</text>
+    </g>
+  </svg>
+  </div>
+</div>
+
+<footer>
+  <span>iot-live-streaming-data · 18-field tick → 5-field windows · 6-field hot blob</span>
+  <span>docs/data-shapes.html</span>
+</footer>
+</body>
+</html>
