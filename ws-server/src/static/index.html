@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IoT Fleet — Live</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>Fleet Live Dashboard</h1>
+    <div id="chips"></div>
+    <span id="conn" class="conn">connecting…</span>
+  </header>
+
+  <main>
+    <section class="panel map-panel">
+      <div id="map"></div>
+    </section>
+    <section class="panel">
+      <h2>Speed (km/h)</h2>
+      <canvas id="speedChart"></canvas>
+    </section>
+    <section class="panel">
+      <h2>Engine temp (°C)</h2>
+      <canvas id="tempChart"></canvas>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
