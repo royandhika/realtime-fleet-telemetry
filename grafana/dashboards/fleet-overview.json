@@ -1,0 +1,380 @@
+{
+  "title": "Fleet Overview",
+  "uid": "fleet-overview",
+  "tags": [
+    "fleet",
+    "iot"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "editable": true,
+  "refresh": "5s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Fleet map (latest positions)",
+      "description": "vehicle:latest:* Redis blobs, overwritten every telemetry tick",
+      "type": "geomap",
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "redis-datasource",
+        "uid": "redis-latest"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "cli",
+          "query": "GET vehicle:latest:veh_0001"
+        },
+        {
+          "refId": "B",
+          "queryType": "cli",
+          "query": "GET vehicle:latest:veh_0002"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Value",
+            "format": "json",
+            "replace": true
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": -6.55,
+          "lon": 107.1,
+          "zoom": 8
+        },
+        "controls": {
+          "showZoom": true,
+          "showScale": true
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Vehicles",
+            "location": {
+              "mode": "coords",
+              "latitude": "lat",
+              "longitude": "lon"
+            },
+            "tooltip": true,
+            "config": {
+              "showLegend": false,
+              "style": {
+                "color": {
+                  "field": "vehicle_id",
+                  "fixed": "green"
+                },
+                "opacity": 0.75,
+                "size": {
+                  "fixed": 7,
+                  "min": 2,
+                  "max": 15
+                },
+                "text": {
+                  "mode": "field",
+                  "field": "vehicle_id"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "textAlign": "center",
+                  "textBaseline": "middle",
+                  "offsetX": 0,
+                  "offsetY": -18
+                }
+              }
+            }
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vehicle_id"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "veh_0001": {
+                        "color": "#58a6ff",
+                        "index": 0
+                      },
+                      "veh_0002": {
+                        "color": "#f78166",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "Vehicles reporting (latest blob)",
+      "description": "Count of vehicles with a fresh Redis latest-state blob",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "redis-datasource",
+        "uid": "redis-latest"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "cli",
+          "query": "GET vehicle:latest:veh_0001"
+        },
+        {
+          "refId": "B",
+          "queryType": "cli",
+          "query": "GET vehicle:latest:veh_0002"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Value",
+            "format": "json",
+            "replace": true
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "count"
+          ],
+          "fields": "lat"
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Speed over time (km/h)",
+      "description": "Raw 1 Hz telemetry from Cassandra",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "hadesarchitect-cassandra-datasource",
+        "uid": "cassandra-fleet"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "target": "SELECT event_time AS time, speed_kmh AS \"veh_0001\" FROM fleet_telemetry.telemetry_by_vehicle_time WHERE vehicle_id = 'veh_0001' LIMIT 500",
+          "queryType": "query"
+        },
+        {
+          "refId": "B",
+          "rawQuery": true,
+          "target": "SELECT event_time AS time, speed_kmh AS \"veh_0002\" FROM fleet_telemetry.telemetry_by_vehicle_time WHERE vehicle_id = 'veh_0002' LIMIT 500",
+          "queryType": "query"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "velocitykmh",
+          "min": 0,
+          "custom": {
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Avg / max speed \u2014 last window (km/h)",
+      "description": "1-minute tumbling aggregate per vehicle (Cassandra)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "hadesarchitect-cassandra-datasource",
+        "uid": "cassandra-fleet"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "target": "SELECT window_start AS time, avg_speed_kmh AS \"avg veh_0001\", max_speed_kmh AS \"max veh_0001\" FROM fleet_telemetry.vehicle_window_aggregates WHERE vehicle_id = 'veh_0001' LIMIT 60",
+          "queryType": "query"
+        },
+        {
+          "refId": "B",
+          "rawQuery": true,
+          "target": "SELECT window_start AS time, avg_speed_kmh AS \"avg veh_0002\", max_speed_kmh AS \"max veh_0002\" FROM fleet_telemetry.vehicle_window_aggregates WHERE vehicle_id = 'veh_0002' LIMIT 60",
+          "queryType": "query"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "velocitykmh",
+          "min": 0,
+          "custom": {
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Harsh events per minute",
+      "description": "harsh_braking / harsh_accel / harsh_cornering / over_speed counted per 1-min bucket",
+      "type": "barchart",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "hadesarchitect-cassandra-datasource",
+        "uid": "cassandra-fleet"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawQuery": true,
+          "target": "SELECT window_start AS time, harsh_event_count AS \"veh_0001\" FROM fleet_telemetry.vehicle_window_aggregates WHERE vehicle_id = 'veh_0001' LIMIT 60",
+          "queryType": "query"
+        },
+        {
+          "refId": "B",
+          "rawQuery": true,
+          "target": "SELECT window_start AS time, harsh_event_count AS \"veh_0002\" FROM fleet_telemetry.vehicle_window_aggregates WHERE vehicle_id = 'veh_0002' LIMIT 60",
+          "queryType": "query"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    }
+  ]
+}

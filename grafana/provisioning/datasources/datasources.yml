@@ -1,0 +1,32 @@
+apiVersion: 1
+
+# Datasources for the fleet dashboard (spec §7).
+deleteDatasources:
+  - name: Cassandra
+    orgId: 1
+  - name: Redis
+    orgId: 1
+
+datasources:
+  # Historical time-series panels read from Cassandra.
+  - name: Cassandra
+    uid: cassandra-fleet
+    type: hadesarchitect-cassandra-datasource
+    access: proxy
+    editable: true
+    url: cassandra:9042
+    jsonData:
+      keyspace: fleet_telemetry
+      consistency: ONE
+
+  # Latest-state panels ("where is the fleet right now") read Redis blobs.
+  - name: Redis
+    uid: redis-latest
+    type: redis-datasource
+    access: proxy
+    editable: true
+    url: redis://redis:6379
+    jsonData:
+      client: standalone
+      poolSize: 5
+      timeout: 5
