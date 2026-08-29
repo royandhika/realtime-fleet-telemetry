@@ -1,0 +1,4 @@
+apache-beam==2.55.1
+kafka-python==2.0.2
+cassandra-driver==3.29.1
+redis==5.0.8
