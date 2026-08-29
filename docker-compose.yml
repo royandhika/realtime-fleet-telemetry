@@ -1,4 +1,4 @@
-name: realtime-fleet-telemetry
+name: iot
 
 # Local single-command stack (spec §8): Kafka (KRaft, no ZK), Cassandra,
 # Redis, Grafana, the WebSocket dashboard, the simulator producer, and the
