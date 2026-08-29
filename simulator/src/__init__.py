@@ -1,0 +1,1 @@
+"""Fleet Telemetry Streaming Pipeline — device simulator package."""

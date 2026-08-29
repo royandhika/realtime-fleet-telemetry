@@ -1,0 +1,3 @@
+# Phase 1: generator (stdlib only)
+# Phase 2: Kafka producer
+kafka-python==2.0.2
